@@ -30,6 +30,8 @@
 *
 *       Adopt twice the tidal radius as escape condition.
       RESC2 = 4.0*RTIDE**2
+      WRITE(*,*)"START ESCAPE, RESC2=",RESC2
+
 *       For tidal cutoff check only energy
       IF(KZ(23).EQ.3)THEN
           RESC2 = 0.D0
@@ -51,6 +53,7 @@
       I = IFIRST
     5 RI2 = (X(1,I) - RDENS(1))**2 + (X(2,I) - RDENS(2))**2 + 
      &                               (X(3,I) - RDENS(3))**2
+      IF (NAME(I).EQ.23828) WRITE(*,*) "ESCAPECHECK, RI2=",RI2
       IF (RI2.LT.RTIDE2) NCRIT1 = NCRIT1 + 1
 *
       IF(KZ(23).LE.2) THEN
@@ -72,7 +75,9 @@
 *       Use energy as escaper criterion also to avoid tidal shock
          IF (RFLAG.AND.VI2.GT.4*PHIDBL(I).AND.RI2.LT.1.0D+10) THEN
 #else
-         IF (RI2.GT.RESC2.AND.RI2.LT.1.0D+10) THEN
+         IF (NAME(I).EQ.23828)WRITE(*,*)I,"ESCAPECHECK_BEFOREIF", RI2, 
+     &                                   RESC2, NAME(I), BODY(I)
+         IF (RI2.GT.RESC2.AND.(RI2.LT.1.0D+10.AND.BODY(I).GT.0.0)) THEN
 #endif
             RJMIN2 = 1.0D+10
 *     Find distance to the nearest neighbour and calculate potential.
@@ -91,15 +96,23 @@
             EI = 0.5*VI2 - POTI
 #ifdef TT
 *** FlorentR - add nbody6tt
+          WRITE(*,*) "TT1"
           IF (KZ(14).EQ.4.OR.KZ(14).EQ.3.OR.KZ(14).EQ.9) THEN
 *** FRenaud
 #else
+          WRITE(*,*)I, NAME(I), "NTT1"
           IF (KZ(14).EQ.4.OR.KZ(14).EQ.3) THEN
 #endif
               EI = EI - MP/SQRT(RI2 + AP2)
               IF (BODY(I).EQ.0.0D0) GO TO 30
           END IF
-          IF ((KZ(14).GT.0.AND.KZ(14).NE.4).OR.EI.GT.0.0) GO TO 30
+          IF (NAME(I).EQ.23828)WRITE(*,*)I,"PRE_ESCAPECHECK30",
+     &                                    NAME(I), KZ(14), EI
+          IF ((KZ(14).GT.0.AND.KZ(14).NE.4).OR.EI.GT.0.0) THEN
+                IF (NAME(I).EQ.23828) WRITE(*,*) I, "ESCAPECHECK30",
+     &                                           NAME(I), KZ(14), EI
+                GO TO 30
+          END IF
           IF (NAME(I).LT.0) GO TO 30
          END IF
 *
@@ -131,6 +144,7 @@
           END IF
       END IF
 *
+      IF (NAME(I).EQ.23828) WRITE(*,*) "ESCAPECHECK10, ", I , NAME(I)  
    10 I = I + 1
    12 IF (N.EQ.2) GO TO 13
 *

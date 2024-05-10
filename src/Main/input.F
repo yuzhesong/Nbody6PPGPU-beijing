@@ -20,14 +20,10 @@
      &    KZ, DTMIN, RMIN, ETAU, ECLOSE, GMIN, GMAX, SMAX, LEVEL
 *      Define Default Values
 *       
-      IF(rank.eq.0)THEN
-*      Make sure the value for N read from data is used (Uli/Rainer June 2023)
-      NCURR = N
 *
+      IF(rank.eq.0)THEN
       READ (NML=ININPUT, IOSTAT=IIC, UNIT=5)
       IF (IIC.NE.0) WRITE (6, '("INPUT: invalid Namelist format")')
-*
-      IF(KSTART.GT.1) N = NCURR
 *
 *       Read & print the main input parameters.
 *        READ (5,*)  N, NFIX, NCRIT, NRAND, NNBOPT, NRUN, NCOMM
@@ -197,10 +193,10 @@ C      end if
 * sse parameters for hrdiag, mlwind
       integer ecflag,wdflag,nsflag,psflag,mdflag,bhflag,kmech,idum
       real*8 mch,mxns0,mxns1,nwind,bwind,flbv,disp,ecsig,
-     *       wdsig1,wdsig2,wdkmax,vvfac,zmetal
+     *       wdsig1,wdsig2,wdkmax,vvfac
       common/sse/ecflag,wdflag,nsflag,psflag,mdflag,bhflag,
      *       kmech,idum,mch,mxns0,mxns1,nwind,bwind,flbv,disp,ecsig,
-     *       wdsig1,wdsig2,wdkmax,vvfac,zmetal
+     *       wdsig1,wdsig2,wdkmax,vvfac
       namelist/insse/ecflag,wdflag,nsflag,psflag,mdflag,bhflag,
      *       kmech,mch,mxns0,mxns1,nwind,bwind,flbv,disp,ecsig,
      *       wdsig1,wdsig2,wdkmax,vvfac
@@ -293,8 +289,10 @@ C      end if
           bwind = 0.d0
           flbv = 1.5d0
           kmech = 4
-          disp = 265.d0
-          ecsig = 3.d0
+          !disp = 265.d0
+          disp = 10.d0
+          !ecsig = 3.d0
+          ecsig = 10.d0
           wdsig1 = 2.d0
           wdsig2 = 2.d0
           wdkmax = 6.d0

@@ -7,6 +7,7 @@
       INCLUDE 'common6.h'
       COMMON/POTDEN/  RHO(NMAX),XNDBL(NMAX),PHIDBL(NMAX)
       logical iscale
+      REAL*8 TESTVEL,TESTZKIN
 *
 *
 *       Sum the total energy of regularized pairs.
@@ -62,7 +63,7 @@
       POT = 0.5*POT
 
 #else
-!$omp parallel do private(I,JMIN,IPAIR,POTI,POTJ,A1,A2,A3,A4) 
+!$omp parallel do private(I,JMIN,IPAIR,POTI,POTJ,A1,A2,A3,A4)
 !$omp& reduction(+:POT)
       DO 20 I = 1,NTOT
          JMIN = I + 1
@@ -71,13 +72,13 @@
             IPAIR = KVEC(I)
             JMIN = 2*IPAIR + 1
          END IF
-*     
+*
          IPAIR = 0
          IF (I.GT.N)  THEN
 *     Binding energy at center of mass position without binary members
             IPAIR = I - N
          END IF
-*     
+*
          POTJ = 0.D00
          POTI = 0.D00
 *     POTI contains potential at particles position to be stored later (R.Sp.)
@@ -104,10 +105,17 @@
       DO 40 I = IFIRST,NTOT
           ZKIN = ZKIN + BODY(I)*(XDOT(1,I)**2 + XDOT(2,I)**2 +
      &                                          XDOT(3,I)**2)
+          TESTVEL = SQRT(XDOT(1,I)**2 + XDOT(2,I)**2 + XDOT(3,I)**2)
+          TESTZKIN = BODY(I)*TESTVEL*TESTVEL
+      IF (TESTZKIN.GT.10.D0) THEN      
+            WRITE (*,*) 'HIGH ENERGY PARTICLE!!!: ', 'NAME=',NAME(I),
+     &      'MASS=',BODY(I), 'VELOCITY =',TESTVEL,'ZKIN=',TESTZKIN,
+     &      'LOCATION(x,y,z)=',X(I,1),X(I,2),X(I,3)
+      END IF
    40 CONTINUE
       ZKIN = 0.5D0*ZKIN
 *
-*       Obtain the tidal potential energy for linearized external field. 
+*       Obtain the tidal potential energy for linearized external field.
       IF (KZ(14).EQ.0) THEN
 *       Note: EPL holds accumulated tidal energy if KZ(14) = 3.
           EPL = 0.0D0

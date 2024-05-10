@@ -40,10 +40,15 @@ c$$$      end if
 *     
 *     Obtain the total energy at current time (resolve all KS pairs).
 #ifdef PARALLEL
+*     --------------- Oliver anagnostou add: energy debug statements
+*       Obtain the total energy at current time using GPU for potentials.
+      WRITE (*,*) 'OA energy:',ZKIN,-POT,ETIDE,ZKIN-POT+ETIDE
       CALL ENERGY_MPI(.false.)
 #else
       CALL ENERGY(.false.)
 #endif
+      WRITE (*,*) 'OA energy:',ZKIN,-POT,ETIDE,ZKIN-POT+ETIDE
+
 *     
 *     Initialize c.m. terms.
       DO 10 K = 1,3
@@ -108,12 +113,21 @@ c$$$      end if
       END IF
 *     Form provisional total energy.
       ETOT = ZKIN - POT + ETIDE + EPL
+*
+*     --------------- Oliver anagnostou add: more energy debug statements
+      WRITE (*,*) 'OA ADJ en:',EBIN,ECOLL,EMDOT,ECDOT
+      WRITE (*,*) 'OA binding sum:', EBIN+ECOLL+EMDOT
+      WRITE (*,*) 'OA en sum:',EBIN+ECOLL+EMDOT+ECDOT
+*     --------------- end Oliver anagnostou add:
 *     
 *     Include KS pairs, triple, quad, mergers, collisions & chain.
       ETOT = ETOT + EBIN + ESUB + EMERGE + ECOLL + EMDOT + ECDOT
       IF (NCH.GT.0) THEN
          ETOT = ETOT + ECH
       END IF
+
+      WRITE (*,*) 'OA en TOT before:',E(1),BE(1),E(2),BE(2),E(3),BE(3)
+
 *     Update energies and form the relative error (divide by ZKIN or E(3)).
       IF (TIME.LE.0.0D0) THEN
          DE = 0.0D0
@@ -131,6 +145,8 @@ c$$$      end if
          ERROR = ERROR + DE
          ERRTOT = ERRTOT + DE
       END IF
+
+      WRITE (*,*) 'OA en TOT after:',E(1),BE(1),E(2),BE(2),E(3),BE(3)
 *     
 *     Set provisional half-mass radius.
       RSCALE = 0.5*ZMASS**2/POT
@@ -150,7 +166,7 @@ c$$$      end if
       IF (RSMIN.EQ.0.0D0) RSMIN = RS0
 *     
 *     Find density centre & core radius (Casertano & Hut, Ap.J. 298, 80).
-      IF (N-NPAIRS.GE.20) THEN
+      IF (N-NPAIRS.GE.20.AND.KZ(29).EQ.0) THEN
          CALL CORE
       ELSE
          NC = N
@@ -165,6 +181,12 @@ c$$$      end if
 *     Scale average & maximum core density by the mean value.
       RHOD = 4.0*TWOPI*RHOD*RSCALE**3/(3.0*ZMASS)
       RHOM = 4.0*TWOPI*RHOM*RSCALE**3/(3.0*ZMASS)
+*     
+*     Adopt density contrasts of unity for hot system.
+      IF (KZ(29).GT.0.AND.ZKIN.GT.POT) THEN
+         RHOD = 1.0
+         RHOM = 1.0
+      END IF
 *     
 *     Check optional determination of regularization parameters.
       IF (KZ(16).GT.0) THEN
@@ -186,6 +208,16 @@ c$$$      end if
             ECLOSE = 0.5*ECLOSE/Q
             KSMAG = 0
          END IF
+      END IF
+*     
+*     Check optional modification of DTMIN, ECLOSE & TCR for hot system.
+      IF (KZ(29).GT.0.AND.Q.GT.1.0) THEN
+         DTMIN = 0.04*SQRT(ETAI/0.02D0)*SQRT(RMIN**3/BODYM)
+         SIGMA2 = 2.0*ZKIN/ZMASS
+         VP2 = 4.0*BODYM/RMIN
+         DTMIN = DTMIN*SQRT((VP2 + SIGMA2/Q)/(VP2 + 2.0D0*SIGMA2))
+         ECLOSE = SIGMA2
+         TCR = 2.0*RSCALE/SQRT(SIGMA2)
       END IF
 *     
 *     Set useful scalars for the integrator.

@@ -1,5 +1,5 @@
       SUBROUTINE ENERGY_MPI(iscale)
-*     
+*
 *
 *       Total energy.
 *       -------------
@@ -20,6 +20,7 @@ c$$$      save ipstart,NPLIST
 #endif
       integer inum(maxpe),ista(maxpe)
       logical iscale
+      REAL*8 TESTVEL,TESTZKIN
 *
 *     --11/11/13 12:56-lwang-check--------------------------------------*
 ***** Note:------------------------------------------------------------**
@@ -60,7 +61,7 @@ c$$$      end if
       if (nl.gt.5E4) then
 #else
       nl = ntot
-#endif         
+#endif
 *
       inl = nl/isize
       idiff = nl - isize*inl
@@ -76,7 +77,7 @@ c$$$      end if
       istart = ista(rank+1)
       iend = ista(rank+1) + inum(rank+1) - 1
 *
-#ifdef GPU      
+#ifdef GPU
 *     --05/17/13 9:13-lwang-gpupot-------------------------------------*
 ***** Note:Use gpupot here---------------------------------------------**
 *       Evaluate individual potentials on GPU (including all c.m.).
@@ -95,7 +96,7 @@ c$$$         end if
 c$$$      CALL GPUPOT(rank,ij,NN,NNT,BODY(IFIRST),X(1,IFIRST)
 c$$$     &        ,phidbl(Ij+ifirst-1))
 c$$$      end do
-***** Note:Finish once-------------------------------------------------**      
+***** Note:Finish once-------------------------------------------------**
 c$$$      CALL GPUPOT(rank,NN,NNT,NPLIST(Istart),BODY(IFIRST),X(1,IFIRST),
 c$$$     *     phidbl(istart+ifirst-1))
       CALL GPUPOT(rank,istart,NN,NNT,BODY(IFIRST),X(1,IFIRST)
@@ -110,17 +111,17 @@ c$$$     *     phidbl(istart+ifirst-1))
             IPAIR = KVEC(I)
             JMIN = 2*IPAIR + 1
          END IF
-C     
+C
          IPAIR = 0
          IF (I.GT.N)  THEN
 *     Binding energy at center of mass position without binary members
             IPAIR = I - N
          END IF
-*     
+*
          POTJ = 0.D00
          POTI = 0.D00
 *     POTI contains potential at particles position to be stored later (R.Sp.)
-*     
+*
          DO 30 J = 1,N
             IF (J.EQ.I .OR. J.EQ.2*IPAIR-1 .OR. J.EQ.2*IPAIR .OR.
      *           BODY(J).EQ.0.0D0 .OR. BODY(I).EQ.0.0D0)  GO TO 30
@@ -137,10 +138,10 @@ C
          SHPOT(I) = BODY(I)*POTJ
  220  CONTINUE
 !$omp end parallel do
-#endif      
+#endif
 *
 *        Distribute variables into private vectors again T3D (R.Sp.)
-      
+
       isend = rank + 1
       if(isend.eq.isize)isend = 0
       irecv = rank - 1
@@ -151,7 +152,7 @@ C
       irank = rank - ir
       if(irank.lt.0)irank=irank+isize
 *
-#ifdef GPU      
+#ifdef GPU
       istart=ista(irank+1)+ifirst-1
       icnt = inum(irank+1)
 *
@@ -165,7 +166,7 @@ C
       if(irank.eq.0)irank=isize
       istrec = ista(irank)
       icnt2 = inum(irank)
-#endif      
+#endif
 *
 *      print*,' ENERGY: bef rank,irank=',rank,irank,npairs
 *      print*,' ENERGY: bef rank ',rank,' phidbl(',istrec,')=',
@@ -183,7 +184,7 @@ C
       CALL MPI_SENDRECV(SHPOT(istart),icnt,MPI_REAL8,isend,rank,
      *                  SHPOT(istrec),icnt2,MPI_REAL8,irecv,irecv,
      *                  MPI_COMM_WORLD,status,ierr)
-#endif      
+#endif
       call cputim(ttab)
       if(rank.eq.0)ttsube = ttsube + (ttab-ttae)*60.
 *
@@ -194,7 +195,7 @@ C
       if(rank.eq.0)ibarcount=ibarcount+1
 
  1001  continue
-#ifdef GPU       
+#ifdef GPU
       else
 C         VIR = 0.0
          POT = 0.0
@@ -252,16 +253,26 @@ c$$$         print*, 'phi: ',phidbl(ifirst:ifirst+5)
       DO 444 I = 1,NTOT
          POT = POT + SHPOT(I)
  444  CONTINUE
-#endif      
+#endif
 *       Sum the kinetic energy (include c.m. bodies but not components).
       DO 40 I = IFIRST,NTOT
           ZKIN = ZKIN + BODY(I)*(XDOT(1,I)**2 + XDOT(2,I)**2 +
      &                                          XDOT(3,I)**2)
+          TESTVEL = SQRT(XDOT(1,I)**2 + XDOT(2,I)**2 + XDOT(3,I)**2)
+          TESTZKIN = BODY(I)*TESTVEL*TESTVEL
+      IF (TESTZKIN.GT.10.D0) THEN
+            WRITE (*,*) 'HIGH ENERGY PARTICLE!!!: ',I, 'NAME=',NAME(I),
+     &      'MASS=',BODY(I), 'VELOCITY =',TESTVEL,'ZKIN=',TESTZKIN,
+     &      'LOCATION(x,y,z)=',X(1,I),X(2,I),X(3,I),
+     &      'XDOT(x,y,z)=',XDOT(1,I),XDOT(2,I),XDOT(3,I),
+     &      'TOTAL # PARTICLES=', NTOT, '# BINARIES=',NPAIRS,
+     &      'FIRST SINGLE AT ', IFIRST
+      END IF
    40 CONTINUE
-*
       ZKIN = 0.5D0*ZKIN
+
 *
-*       Obtain the tidal potential energy for linearized external field. 
+*       Obtain the tidal potential energy for linearized external field.
       IF (KZ(14).EQ.0) THEN
 *       Note: EPL holds accumulated tidal energy if KZ(14) = 3.
          EPL = 0.0D0

@@ -49,7 +49,13 @@ C      END IF
    10     FORMAT (/,9X,'CALCULATIONS HALTED * * *')
 *       Increase NDUMP to prevent 3rd restart (safety check in routine MAIN).
           NDUMP = 2
-          IF (KZ(1).NE.0.AND.KZ(2).GE.1) CALL MYDUMP(1,1)
+          WRITE (6,70) KZ(1), KZ(2)
+   70     FORMAT(/,9X, 'KZ(1)=',I10, 'KZ(2)=',I10)
+          IF (KZ(1).NE.0.AND.KZ(2).GE.1) THEN
+                CALL MYDUMP(1,1)
+                WRITE (6, 80)
+   80           FORMAT(/,9X,'MYDUMP IS EXECUTED')
+          END IF 
           call flush(6)
           STOP
       END IF

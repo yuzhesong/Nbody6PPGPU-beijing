@@ -5,6 +5,7 @@
 *       --------------------
 *
       IMPLICIT REAL*8  (A-H,O-Z)
+
       INCLUDE 'params.h'
       INCLUDE 'timing.h'
       INCLUDE 'mpi_base.h'
@@ -23,6 +24,10 @@
       integer inum(maxpe),ista(maxpe)
       data iisize/4/
 #endif
+
+
+
+
       COMMON/NAMES/  NTOT,NPAIRS,NTTOT,IA(NA)
       COMMON/COUNTS/ B(NB)
       COMMON/PARAMS/ C(NC)
@@ -64,6 +69,10 @@
       DATA FRAG/'comm.1_','comm.2_'/
       DATA J0/0/
       SAVE J
+
+       WRITE(6,1000)
+ 1000 FORMAT(/,9X,'MYDUMP IS EXECUTING')
+
 *
 *       Read or save all COMMON variables (valid for tape or disc).
       IF (II.NE.0) THEN

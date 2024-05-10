@@ -8,8 +8,11 @@
       COMMON/BINARY/  CM(4,MMAX),XREL(3,MMAX),VREL(3,MMAX),
      &                HM(MMAX),UM(4,MMAX),UMDOT(4,MMAX),TMDIS(MMAX),
      &                NAMEM(MMAX),NAMEG(MMAX),KSTARM(MMAX),IFLAG(MMAX)
+      INTEGER KWP
       REAL*8  LUMS(10),TSCLS(20),GB(10)
-      REAL*8  M0,M1,M2,LUM,LUM2,MC,ME,K2
+      REAL*8  M0,M1,M2,LUM,LUM2,MC,ME,K2,K3
+      PARAMETER(K3=0.21d0)
+      REAL*8  OSPIN1,OSPIN2,DJSPIN1,DJSPIN2
       CHARACTER*27 FILE(2)
       CHARACTER*20 TCHAR
 *
@@ -29,7 +32,11 @@
       NS = N - 2*NPAIRS
       IMERGE = 0
       if(rank.eq.0) WRITE (83,1)  NS, TPHYS
-
+*
+      if(rank.eq.0) WRITE(83,102)NC,RC,RBAR,RTIDE,(RDENS(K),K=1,3)
+      if(rank.eq.0) WRITE(83,103)ZMBAR,MIN(TURN,99.999),RSCALE
+ 102  FORMAT(I8,3F6.2,3F10.5)
+ 103  FORMAT(F12.4,2F6.2)
 *
       DO 20 I = 1,N
           M0 = BODY0(I)*ZMBAR
@@ -56,9 +63,17 @@
 *       Obtain stellar parameters at current epoch.
           KW = KSTAR(I)
           AGE = MAX(TPLOT,TEV0(I))*TSTAR - EPOCH(I)
+          MC = 0.D0
           CALL STAR(KW,M0,M1,TM,TN,TSCLS,LUMS,GB,ZPARS)
           CALL HRDIAG(M0,AGE,M1,TM,TN,TSCLS,LUMS,GB,ZPARS,
      &                RM,LUM,KW,MC,RCC,ME,RE,K2)
+          if(kw.eq.15)then
+             if(rank.eq.0)then 
+                write(6,*)' HRPLOT15 ',
+     &                    i,name(i),kstar(i),age,tphys
+             endif
+             STOP
+          endif
           IF (I.LT.IFIRST) THEN
               JPAIR = KVEC(I)
               J2 = 2*JPAIR
@@ -91,6 +106,7 @@
                   M2 = CM(4,IM)*ZMBAR
                   KW = KSTAR(J1)
                   AGE = MAX(TPLOT,TEV0(J1))*TSTAR - EPOCH(J1)
+                  MC = 0.D0
                   CALL STAR(KW,M0,M1,TM,TN,TSCLS,LUMS,GB,ZPARS)
                   CALL HRDIAG(M0,AGE,M1,TM,TN,TSCLS,LUMS,GB,ZPARS,
      &                        RM,LUM,KW,MC,RCC,ME,RE,K2)
@@ -115,13 +131,19 @@
                   J2 = J
                   AGE = MAX(TPLOT,TEV0(J1))*TSTAR - EPOCH(J1)
                   KW = KSTAR(J1)
+                  MC = 0.D0
                   CALL STAR(KW,M0,M1,TM,TN,TSCLS,LUMS,GB,ZPARS)
                   CALL HRDIAG(M0,AGE,M1,TM,TN,TSCLS,LUMS,GB,ZPARS,
      &                        RM,LUM,KW,MC,RCC,ME,RE,K2)
               END IF
+*
+              OSPIN1 = MAX(SPIN(J1)*SPNFAC,1.0D-10)/
+     &                    (K2*RM*RM*(M1-MC)+K3*RCC*RCC*MC)
+*
               M0 = BODY0(J2)*ZMBAR
               KW2 = KSTAR(J2)
               AGE = MAX(TPLOT,TEV0(J2))*TSTAR - EPOCH(J2)
+              MC = 0.D0
               CALL STAR(KW2,M0,M2,TM,TN,TSCLS,LUMS,GB,ZPARS)
               CALL HRDIAG(M0,AGE,M2,TM,TN,TSCLS,LUMS,GB,ZPARS,
      &                    RM2,LUM2,KW2,MC,RCC,ME,RE,K2)
@@ -157,12 +179,26 @@
 *
               AGE1 = MAX(TPLOT,TEV0(J1))*TSTAR - EPOCH(J1)
               AGE2 = MAX(TPLOT,TEV0(J2))*TSTAR - EPOCH(J2)
+*
+              OSPIN2 = MAX(SPIN(J2)*SPNFAC,1.0D-10)/
+     &                    (K2*RM*RM*(M1-MC)+K3*RCC*RCC*MC)
+              KWP = MIN(KSTAR(ICM),99)
+*
+*   PRINT ECCENTRICITY HERE
+*              write(6,*)' ECC_HRPLOT ',   ECC
+
               if(rank.eq.0)
-     &        WRITE (82,5)  TTOT, J1, J2, NAME(J1), NAME(J2), KW, KW2, 
-     &          KSTAR(ICM),
-     &          RI, ECC, PB, SEMI, M1, M2, ZL1, ZL2, R1, R2, TE1, TE2,
-     &          AGE1, AGE2, EPOCH(J1), EPOCH(J2)
-    5         FORMAT (1X,1P,E13.5,4I8,2I3,I4,6E13.5,10E13.5)
+*    &        WRITE (82,5)  TTOT, J1, J2, NAME(J1), NAME(J2), KW, KW2, 
+*    &          KSTAR(ICM),
+*    &          RI, ECC, PB, SEMI, M1, M2, ZL1, ZL2, R1, R2, TE1, TE2,
+*    &          AGE1, AGE2, EPOCH(J1), EPOCH(J2)
+*   5         FORMAT (1X,1P,E13.5,4I8,2I3,I4,6E13.5,10E13.5)
+
+     &        WRITE (82,123) J1,J2,NAME(J1),NAME(J2),KW,KW2,KWP,
+     &            ECC,PB,SEMI,M1,M2,ZL1,ZL2,R1,R2,
+     &            (X(K,ICM),K=1,3),(XDOT(K,ICM),K=1,3),
+     &            EPOCH(J1),EPOCH(J2),OSPIN1,OSPIN2
+ 123   FORMAT(4I7,2I3,I4,F6.3,F10.2,7F8.3,1P,6E14.6,0P,2F12.3,1P,2E12.4)
           ELSE
 *       Create output file for single stars (skip chain subsystem or ghost).
               IF (NAME(I).EQ.0.OR.BODY(I).EQ.0.0D0) GO TO 20
@@ -177,11 +213,16 @@ ccc              TE = 0.25*(ZL1 - 2.0*R1) + 3.7
 * correct value: lg(5778 K) = 3.761777537508
 
               TE = 0.25*(ZL1 - 2.0*R1) + 3.761777537508
+              OSPIN1 = MAX(SPIN(I)*SPNFAC,1.0D-10)/
+     &                    (K2*RM*RM*(M1-MC)+K3*RCC*RCC*MC)
               AGE = MAX(TPLOT,TEV0(I))*TSTAR - EPOCH(I)
               if(rank.eq.0)
-     &        WRITE (83,10)  TTOT, I, NAME(I), KW, RI, M1, ZL1, R1, TE,
-     &        AGE, EPOCH(I)
-   10         FORMAT (1X,1P,E13.5,2I8,I3,7E13.5)
+*    &        WRITE (83,10)  TTOT, I, NAME(I), KW, RI, M1, ZL1, R1, TE,
+*    &        AGE, EPOCH(I)
+*  10         FORMAT (1X,1P,E13.5,2I8,I3,7E13.5)
+     &        WRITE(83,121)I,NAME(I),KW,M1,ZL1,R1,
+     &                (X(K,I),K=1,3),(XDOT(K,I),K=1,3),EPOCH(I),OSPIN1
+  121        FORMAT(2I7,I3,3F8.3,1P,6E14.6,0P,F12.3,1P,E12.4)
           END IF
    20 CONTINUE
 *

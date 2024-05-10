@@ -73,6 +73,7 @@
             NXTLIMIT = 0
             NGHOSTS = 0
             DO I = IFIRST,NTOT
+               IF (NAME(I).EQ.2405) WRITE(*,*) "INTGRT:",I 
                IF(BODY(I).NE.0.D0) THEN
                   NXTLIMIT = NXTLIMIT + 1
                   NXTLST(NXTLIMIT) = I
@@ -218,6 +219,11 @@
       if(rank.eq.0)ttintb = ttintb +(tttiend-tttbegin)*60.
 *
 *       Find all particles due at next block time.
+
+      DO I=1, NTOT
+        IF (NAME(I).EQ.2405) WRITE(*,*) I, 'INTCHECK 2405', BODY(I),
+     &                      XDOT(1,I),XDOT(2,I), XDOT(3,I), TIME
+      END DO
     1 CONTINUE
 *
 *       Redetermine TMIN after main change to catch new small steps after chain.
@@ -419,6 +425,10 @@ c$$$     &            3I6,I11,1P,2E10.2,2I11)
 c$$$             CALL FLUSH(6)
 c$$$             STOP
 c$$$  END IF
+
+        IF(NAME(I).EQ.2405) THEN
+                WRITE(*,*) I, "INTGRT- 2405"
+        ENDIF
             IF (STEP(I).LT.DTMIN.AND.STEP(I).LT.DSMIN.AND.I.LE.N.AND.
      &           I.GE.IFIRST) THEN
                DSMIN = STEP(I)
@@ -1302,6 +1312,10 @@ c$$$C      call abort()
 c$$$ 1022 continue
 *     --07/08/14 15:38-lwang-end----------------------------------------*
 #endif
+*      DO I=1, NTOT
+*        IF (NAME(I).EQ.2405) WRITE(*,*) I,IQ, 'INTCHECK2 2405', BODY(I),
+*     &                      XDOT(1,I),XDOT(2,I), XDOT(3,I), TIME
+*      END DO
 
 *     Output of Massive black hole data
       IF (KZ(24).EQ.1) then

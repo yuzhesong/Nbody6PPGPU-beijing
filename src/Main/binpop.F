@@ -164,6 +164,7 @@ C
 *             Get thermal distribution if b=1 with e0=0
 *
           ICOLL = 0
+*         write(*,*)' ECC0 ',ECC0
  31       IF (ECC0.LT.0.0) THEN
               ECC2 = RAN2(KDUM)
               ECC = SQRT(ECC2)
@@ -285,24 +286,33 @@ C
              semi = semi/RBAR
 *========= KZ(42) = 5 ========
           else if (KZ(42).EQ.5) then
-             exp1 = -10.
+ 32          x1 = RAN2(KDUM)
+             x2 = RAN2(KDUM)
+             exp1 = 2.3*SQRT(-2.D0*LOG(x1))*COS(TWOPI*x2)+4.8
+CC Old gasdev stuff
+*            exp1 = -10.
 C Only accept periods logP>1, i.e. longer than 10 days at birth
 C AND periods shorter than 10^(10) days!
-             do while (exp1.LT.-1.6522)
-                exp1 = GASDEV_pk(KDUM)
-                if (exp1.GT.2.2696) exp1=-10.
-             end do
+*            do while (exp1.LT.-1.6522)
+*               exp1 = GASDEV_pk(KDUM)
+*               if (exp1.GT.2.2696) exp1=-10.
+*            end do
 * exp1 is now a Gaussian deviate with mean zero and unit variance
 * Transform to mean=4.8 and variance = 2.3*2.3, i.e to logP, P in days
-            exp1 = 2.3*exp1 + 4.8
+*           exp1 = 2.3*exp1 + 4.8
 * exp = logP(days)
 * Period in yrs:
-             exp1 = 10**exp1 /365.25D0
+             exp1 = 10**exp1/365.25D0
 * transform to semi-major axis in model units to continue prgrm from here
 * as before (i.e. when semi-major axis is chosen): Use Kepler law:
 * M1+M2 = a**3/P**2, where mass is in Msun, and a is in AU.
              semi = (BODY(I1)+BODY(I2))*ZMBAR*exp1*exp1
              semi = semi**(1.D0/3.D0)
+             if(semi0.gt.0.0.and.semi.gt.semi0) goto 32
+             if(rank.eq.0)then
+                write(6,*)' ECC SEMI M1 M2 ',
+     &                      ecc,semi,body(i1)*zmbar,body(i2)*zmbar
+             endif
 * semi in pc and then in modell units:
              semi = semi/AU
              semi = semi/RBAR
@@ -360,8 +370,8 @@ c$$$                 CALL FLUSH(23)
 c$$$              end if
 c$$$***-----------
 c$$$          else
-             if(rank.eq.0)write(6,*)' No KZ(42) defined!!!!! '
-             STOP
+*            if(rank.eq.0)write(6,*)' No KZ(42) defined!!!!! '
+*            STOP
           end if
 
 *     Avoid collision at beginning
